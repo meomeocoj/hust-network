@@ -1,0 +1,22 @@
+FROM rust:1.67.0-bullseye AS builder
+
+RUN apt-get update
+RUN apt-get install libusb-1.0-0-dev --yes
+
+ENV LOCAL=/usr/local
+ENV RUSTFLAGS=-Ctarget-feature=+aes,+ssse3
+ENV TMKMS_VERSION=v0.12.2
+
+WORKDIR /root
+RUN git clone --branch ${TMKMS_VERSION} https://github.com/iqlusioninc/tmkms.git
+WORKDIR /root/tmkms
+RUN uname -srm
+RUN cargo build --release --features=softsign
+
+# The production image starts here
+FROM ubuntu:22.04
+
+COPY --from=builder /root/tmkms/target/release/tmkms ${LOCAL}/bin
+
+ENTRYPOINT [ "tmkms" ]
+
